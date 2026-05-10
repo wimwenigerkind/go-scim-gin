@@ -9,6 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// https://www.rfc-editor.org/rfc/rfc7644#section-3.1
+const contentTypeSCIM = "application/scim+json"
+
 type Handler struct {
 	provider UserProvider
 	token    string
@@ -28,7 +31,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 func (h *Handler) listUsers(c *gin.Context) {
 	users, err := h.provider.ListUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, scimError("500", err.Error()))
+		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
 		return
 	}
 
@@ -40,7 +43,7 @@ func (h *Handler) listUsers(c *gin.Context) {
 		h.enrichMeta(c, &users[i])
 	}
 
-	c.JSON(http.StatusOK, ListResponse{
+	scimJSON(c, http.StatusOK, ListResponse{
 		Schemas:      []Schema{SchemaListResponse},
 		TotalResults: len(users),
 		StartIndex:   1,
@@ -55,21 +58,21 @@ func (h *Handler) getUser(c *gin.Context) {
 	user, err := h.provider.GetUser(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			c.JSON(http.StatusNotFound, scimError("404", "User not found"))
+			scimJSON(c, http.StatusNotFound, scimError("404", "User not found"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, scimError("500", err.Error()))
+		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
 		return
 	}
 
 	h.enrichMeta(c, user)
-	c.JSON(http.StatusOK, user)
+	scimJSON(c, http.StatusOK, user)
 }
 
 func (h *Handler) createUser(c *gin.Context) {
 	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, scimError("400", err.Error()))
+		scimJSON(c, http.StatusBadRequest, scimError("400", err.Error()))
 		return
 	}
 
@@ -83,20 +86,21 @@ func (h *Handler) createUser(c *gin.Context) {
 
 	created, err := h.provider.CreateUser(c.Request.Context(), user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, scimError("500", err.Error()))
+		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
 		return
 	}
 
 	h.enrichMeta(c, created)
 	c.Header("Location", created.Meta.Location)
-	c.JSON(http.StatusCreated, created)
+	scimJSON(c, http.StatusCreated, created)
 }
 
 func (h *Handler) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
 		if subtle.ConstantTimeCompare([]byte(auth), []byte("Bearer "+h.token)) != 1 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, scimError("401", "Unauthorized"))
+			scimJSON(c, http.StatusUnauthorized, scimError("401", "Unauthorized"))
+			c.Abort()
 			return
 		}
 		c.Next()
@@ -110,6 +114,12 @@ func scimError(status, detail string) gin.H {
 		"status":  status,
 		"detail":  detail,
 	}
+}
+
+// https://www.rfc-editor.org/rfc/rfc7644#section-3.1
+func scimJSON(c *gin.Context, status int, body any) {
+	c.Header("Content-Type", contentTypeSCIM)
+	c.JSON(status, body)
 }
 
 // https://www.rfc-editor.org/rfc/rfc7643#section-3.1
