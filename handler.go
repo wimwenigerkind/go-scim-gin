@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,6 +36,10 @@ func (h *Handler) listUsers(c *gin.Context) {
 		users = []User{}
 	}
 
+	for i := range users {
+		h.enrichMeta(c, &users[i])
+	}
+
 	c.JSON(http.StatusOK, ListResponse{
 		Schemas:      []Schema{SchemaListResponse},
 		TotalResults: len(users),
@@ -57,6 +62,7 @@ func (h *Handler) getUser(c *gin.Context) {
 		return
 	}
 
+	h.enrichMeta(c, user)
 	c.JSON(http.StatusOK, user)
 }
 
@@ -67,6 +73,12 @@ func (h *Handler) createUser(c *gin.Context) {
 		return
 	}
 
+	if user.CommonAttributes == nil {
+		user.CommonAttributes = &CommonAttributes{}
+	}
+	user.ID = ""
+	user.Meta = nil
+
 	user.Schemas = []Schema{SchemaCoreUser}
 
 	created, err := h.provider.CreateUser(c.Request.Context(), user)
@@ -75,6 +87,8 @@ func (h *Handler) createUser(c *gin.Context) {
 		return
 	}
 
+	h.enrichMeta(c, created)
+	c.Header("Location", created.Meta.Location)
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -96,4 +110,24 @@ func scimError(status, detail string) gin.H {
 		"status":  status,
 		"detail":  detail,
 	}
+}
+
+// https://www.rfc-editor.org/rfc/rfc7643#section-3.1
+func (h *Handler) enrichMeta(c *gin.Context, user *User) {
+	if user.CommonAttributes == nil {
+		user.CommonAttributes = &CommonAttributes{}
+	}
+	if user.Meta == nil {
+		user.Meta = &Meta{}
+	}
+	user.Meta.ResourceType = "User"
+	user.Meta.Location = absoluteURL(c, "/scim/v2/Users/"+user.ID)
+}
+
+func absoluteURL(c *gin.Context, path string) string {
+	scheme := "http"
+	if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	return scheme + "://" + c.Request.Host + path
 }
