@@ -32,7 +32,7 @@ implementing [RFC 7643](https://www.rfc-editor.org/rfc/rfc7643) (Schema) and
 import scim "github.com/wimwenigerkind/go-scim-gin"
 
 provider := &MyProvider{} // implements scim.UserProvider
-handler := scim.NewHandler(provider, "your-bearer-token")
+handler := scim.NewHandler(scim.Providers{Users: provider}, "test-token")
 
 r := gin.Default()
 handler.RegisterRoutes(r)

@@ -2,6 +2,12 @@ package scim
 
 import "context"
 
+// Providers bundles all resource providers a SCIM server can expose.
+type Providers struct {
+	Users UserProvider
+	// Groups GroupProvider // RFC 7643 §4.2
+}
+
 // UserProvider https://www.rfc-editor.org/rfc/rfc7644#section-3.2
 type UserProvider interface {
 	// ListUsers https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2
