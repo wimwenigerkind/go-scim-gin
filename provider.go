@@ -12,7 +12,7 @@ type Providers struct {
 type UserProvider interface {
 	// ListUsers https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2
 	// ListUsers(ctx context.Context, filter *Filter, pagination Pagination) ([]User, int, error)
-	ListUsers(ctx context.Context) ([]User, error)
+	ListUsers(ctx context.Context, filter *Filter) ([]User, error)
 
 	// GetUser https://www.rfc-editor.org/rfc/rfc7644#section-3.4.1
 	GetUser(ctx context.Context, id string) (*User, error)

@@ -2,6 +2,7 @@ package scim
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,19 @@ func (h *Handler) registerUserRoutes(g *gin.RouterGroup) {
 }
 
 func (h *Handler) listUsers(c *gin.Context) {
-	users, err := h.providers.Users.ListUsers(c.Request.Context())
+	var filter *Filter
+	if raw := c.Query("filter"); raw != "" {
+		tokens := tokenize(raw)
+		f, err := parse(tokens)
+		if err != nil {
+			scimJSON(c, http.StatusBadRequest,
+				scimError("400", fmt.Sprintf("invalid filter: %v", err), ScimTypeInvalidFilter))
+			return
+		}
+		filter = &f
+	}
+
+	users, err := h.providers.Users.ListUsers(c.Request.Context(), filter)
 	if err != nil {
 		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
 		return
@@ -65,7 +78,7 @@ func (h *Handler) getUser(c *gin.Context) {
 func (h *Handler) createUser(c *gin.Context) {
 	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
-		scimJSON(c, http.StatusBadRequest, scimError("400", err.Error()))
+		scimJSON(c, http.StatusBadRequest, scimError("400", err.Error(), ScimTypeInvalidSyntax))
 		return
 	}
 

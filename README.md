@@ -25,6 +25,7 @@ implementing [RFC 7643](https://www.rfc-editor.org/rfc/rfc7643) (Schema) and
 - [x] `Location` header on create ([RFC 7644 §3.3](https://www.rfc-editor.org/rfc/rfc7644#section-3.3))
 - [ ] SCIM error responses ([RFC 7644 §3.12](https://www.rfc-editor.org/rfc/rfc7644#section-3.12))
 - [x] `WWW-Authenticate` on 401 ([RFC 7235 §4.1](https://www.rfc-editor.org/rfc/rfc7235#section-4.1))
+- [x] Filter single `attr op value` ([RFC 7644 §3.4.2.2](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2))
 
 ## Usage
 
