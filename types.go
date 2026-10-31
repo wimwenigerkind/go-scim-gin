@@ -145,7 +145,7 @@ type User struct {
 	Timezone string `json:"timezone,omitempty"`
 
 	// https://www.rfc-editor.org/rfc/rfc7643#section-4.1.1
-	Active bool `json:"active"`
+	Active *bool `json:"active,omitempty"`
 
 	// https://www.rfc-editor.org/rfc/rfc7643#section-4.1.1
 	Password string `json:"password,omitempty"`

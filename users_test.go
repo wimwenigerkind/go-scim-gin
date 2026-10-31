@@ -575,3 +575,31 @@ func TestProviderReturningNilNil(t *testing.T) {
 		assertSCIMError(t, w, http.StatusInternalServerError, "")
 	})
 }
+
+func TestActiveIsOptional(t *testing.T) {
+	t.Run("absent stays absent", func(t *testing.T) {
+		provider := &fakeUserProvider{createdID: "1"}
+		r := newTestRouter(provider)
+		w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"a"}`, nil)
+
+		if provider.gotCreate.Active != nil {
+			t.Errorf("provider got active %v, want nil", *provider.gotCreate.Active)
+		}
+		if body := decode[map[string]any](t, w); body["active"] != nil {
+			t.Errorf("response active = %v, want absent", body["active"])
+		}
+	})
+
+	t.Run("false is kept", func(t *testing.T) {
+		provider := &fakeUserProvider{createdID: "1"}
+		r := newTestRouter(provider)
+		w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"a","active":false}`, nil)
+
+		if a := provider.gotCreate.Active; a == nil || *a {
+			t.Errorf("provider got active %v, want false", a)
+		}
+		if body := decode[map[string]any](t, w); body["active"] != false {
+			t.Errorf("response active = %v, want false", body["active"])
+		}
+	})
+}
