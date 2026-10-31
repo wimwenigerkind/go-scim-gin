@@ -23,9 +23,11 @@ implementing [RFC 7643](https://www.rfc-editor.org/rfc/rfc7643) (Schema) and
 - [x] `application/scim+json` content type ([RFC 7644 §3.1](https://www.rfc-editor.org/rfc/rfc7644#section-3.1))
 - [x] Server-controlled `meta` ([RFC 7643 §3.1](https://www.rfc-editor.org/rfc/rfc7643#section-3.1))
 - [x] `Location` header on create ([RFC 7644 §3.3](https://www.rfc-editor.org/rfc/rfc7644#section-3.3))
-- [ ] SCIM error responses ([RFC 7644 §3.12](https://www.rfc-editor.org/rfc/rfc7644#section-3.12))
+- [x] SCIM error responses ([RFC 7644 §3.12](https://www.rfc-editor.org/rfc/rfc7644#section-3.12))
 - [x] `WWW-Authenticate` on 401 ([RFC 7235 §4.1](https://www.rfc-editor.org/rfc/rfc7235#section-4.1))
-- [x] Filter single `attr op value` ([RFC 7644 §3.4.2.2](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2))
+- [x] Filter single `attr op value` and `attr pr` ([RFC 7644 §3.4.2.2](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2))
+- [ ] Compound filters (`and`, `or`, `not`, value paths)
+- [ ] Pagination and sorting
 
 ## Usage
 
@@ -54,6 +56,19 @@ visible base URL:
 handler := scim.NewHandler(providers, token,
 	scim.WithBaseURL("https://portal.example.com/api/scim/v2"))
 ```
+
+### Provider errors
+
+Return these from a provider, wrapped or not, to get the matching response.
+Any other error becomes a 500; its text goes to `c.Errors` for your logging
+middleware, not to the client.
+
+| Error                       | Response                 |
+|-----------------------------|--------------------------|
+| `scim.ErrNotFound`          | 404                      |
+| `scim.ErrConflict`          | 409 `uniqueness`         |
+| `scim.ErrTooMany`           | 400 `tooMany`            |
+| `scim.ErrUnsupportedFilter` | 400 `invalidFilter`      |
 
 ## License
 
