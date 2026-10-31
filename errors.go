@@ -23,3 +23,7 @@ var (
 	// https://www.rfc-editor.org/rfc/rfc7644#section-3.12
 	ErrUnsupportedFilter = errors.New("scim: unsupported filter")
 )
+
+// errNilResource replaces a provider's (nil, nil) result, which would
+// otherwise panic in the handler.
+var errNilResource = errors.New("scim: provider returned neither a resource nor an error")

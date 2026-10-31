@@ -521,3 +521,23 @@ func TestProviderErrorTextIsNotExposed(t *testing.T) {
 		})
 	}
 }
+
+type nilUserProvider struct{ fakeUserProvider }
+
+func (nilUserProvider) GetUser(context.Context, string) (*User, error) { return nil, nil }
+
+func (nilUserProvider) CreateUser(context.Context, User) (*User, error) { return nil, nil }
+
+func TestProviderReturningNilNil(t *testing.T) {
+	r := newTestRouter(&nilUserProvider{})
+
+	t.Run("get", func(t *testing.T) {
+		w := doRequest(r, http.MethodGet, "/scim/v2/Users/1", "", nil)
+		assertSCIMError(t, w, http.StatusInternalServerError, "")
+	})
+
+	t.Run("create", func(t *testing.T) {
+		w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"a"}`, nil)
+		assertSCIMError(t, w, http.StatusInternalServerError, "")
+	})
+}

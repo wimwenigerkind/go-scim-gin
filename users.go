@@ -60,6 +60,9 @@ func (h *Handler) getUser(c *gin.Context) {
 	id := c.Param("id")
 
 	user, err := h.providers.Users.GetUser(c.Request.Context(), id)
+	if err == nil && user == nil {
+		err = errNilResource
+	}
 	if err != nil {
 		providerError(c, err, userResourceType)
 		return
@@ -85,6 +88,9 @@ func (h *Handler) createUser(c *gin.Context) {
 	user.Schemas = []Schema{SchemaCoreUser}
 
 	created, err := h.providers.Users.CreateUser(c.Request.Context(), user)
+	if err == nil && created == nil {
+		err = errNilResource
+	}
 	if err != nil {
 		providerError(c, err, userResourceType)
 		return
