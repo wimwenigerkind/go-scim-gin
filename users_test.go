@@ -397,3 +397,42 @@ func TestCreateUser(t *testing.T) {
 		assertSCIMError(t, w, http.StatusInternalServerError, "")
 	})
 }
+
+func TestPasswordIsNeverReturned(t *testing.T) {
+	stored := User{CommonAttributes: &CommonAttributes{ID: "1"}, UserName: "alice", Password: "hunter2"}
+
+	tests := []struct {
+		name   string
+		method string
+		target string
+		body   string
+		want   int
+	}{
+		{"list", http.MethodGet, "/scim/v2/Users", "", http.StatusOK},
+		{"get", http.MethodGet, "/scim/v2/Users/1", "", http.StatusOK},
+		{"create", http.MethodPost, "/scim/v2/Users", `{"userName":"bob","password":"hunter2"}`, http.StatusCreated},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := &fakeUserProvider{users: []User{stored}, createdID: "2"}
+			r := newTestRouter(provider)
+			w := doRequest(r, tt.method, tt.target, tt.body, nil)
+
+			assertSCIMResponse(t, w, tt.want)
+			if strings.Contains(w.Body.String(), "hunter2") {
+				t.Errorf("response contains the password: %s", w.Body.String())
+			}
+		})
+	}
+
+	t.Run("provider still receives the password on create", func(t *testing.T) {
+		provider := &fakeUserProvider{createdID: "2"}
+		r := newTestRouter(provider)
+		doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"bob","password":"hunter2"}`, nil)
+
+		if provider.gotCreate.Password != "hunter2" {
+			t.Errorf("provider got password %q, want hunter2", provider.gotCreate.Password)
+		}
+	})
+}

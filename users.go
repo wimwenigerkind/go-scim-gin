@@ -45,7 +45,7 @@ func (h *Handler) listUsers(c *gin.Context) {
 	}
 
 	for i := range users {
-		h.enrichUserMeta(c, &users[i])
+		h.prepareUserResponse(c, &users[i])
 	}
 
 	scimJSON(c, http.StatusOK, ListResponse{
@@ -70,7 +70,7 @@ func (h *Handler) getUser(c *gin.Context) {
 		return
 	}
 
-	h.enrichUserMeta(c, user)
+	h.prepareUserResponse(c, user)
 	scimJSON(c, http.StatusOK, user)
 }
 
@@ -95,12 +95,15 @@ func (h *Handler) createUser(c *gin.Context) {
 		return
 	}
 
-	h.enrichUserMeta(c, created)
+	h.prepareUserResponse(c, created)
 	c.Header("Location", created.Meta.Location)
 	scimJSON(c, http.StatusCreated, created)
 }
 
-func (h *Handler) enrichUserMeta(c *gin.Context, user *User) {
+func (h *Handler) prepareUserResponse(c *gin.Context, user *User) {
+	// https://www.rfc-editor.org/rfc/rfc7643#section-4.1.1: password has
+	// "returned" set to "never", whatever the provider hands back.
+	user.Password = ""
 	if user.CommonAttributes == nil {
 		user.CommonAttributes = &CommonAttributes{}
 	}
