@@ -149,10 +149,35 @@ func TestAuth(t *testing.T) {
 func TestRegisterRoutesOnGroup(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	NewHandler(Providers{Users: &fakeUserProvider{}}, testToken).RegisterRoutes(r.Group("/api"))
+	provider := &fakeUserProvider{users: []User{{CommonAttributes: &CommonAttributes{ID: "1"}}}}
+	NewHandler(Providers{Users: provider}, testToken).RegisterRoutes(r.Group("/api"))
 
-	w := doRequest(r, http.MethodGet, "/api/scim/v2/Users", "", nil)
+	w := doRequest(r, http.MethodGet, "/api/scim/v2/Users/1", "", nil)
 	assertSCIMResponse(t, w, http.StatusOK)
+	got := decode[User](t, w)
+	if want := "http://example.com/api/scim/v2/Users/1"; got.Meta.Location != want {
+		t.Errorf("meta.location = %q, want %q", got.Meta.Location, want)
+	}
+}
+
+func TestWithBaseURL(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	provider := &fakeUserProvider{createdID: "42"}
+	NewHandler(Providers{Users: provider}, testToken,
+		WithBaseURL("https://portal.example.com/api/scim/v2/")).RegisterRoutes(r)
+
+	w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"alice"}`,
+		http.Header{"X-Forwarded-Proto": {"http"}})
+	assertSCIMResponse(t, w, http.StatusCreated)
+
+	want := "https://portal.example.com/api/scim/v2/Users/42"
+	if got := w.Header().Get("Location"); got != want {
+		t.Errorf("Location header = %q, want %q", got, want)
+	}
+	if got := decode[User](t, w).Meta.Location; got != want {
+		t.Errorf("meta.location = %q, want %q", got, want)
+	}
 }
 
 func TestUserRoutesWithoutProvider(t *testing.T) {

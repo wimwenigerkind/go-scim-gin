@@ -40,6 +40,21 @@ handler.RegisterRoutes(r)
 r.Run(":8080")
 ```
 
+`RegisterRoutes` takes any `gin.IRouter`, so the routes can live below a group.
+`Location` and `meta.location` include the group's prefix:
+
+```go
+handler.RegisterRoutes(r.Group("/api")) // serves /api/scim/v2/Users
+```
+
+Behind a reverse proxy that rewrites the host or the path, set the externally
+visible base URL:
+
+```go
+handler := scim.NewHandler(providers, token,
+	scim.WithBaseURL("https://portal.example.com/api/scim/v2"))
+```
+
 ## License
 
 Licensed under the [MIT License](LICENSE).

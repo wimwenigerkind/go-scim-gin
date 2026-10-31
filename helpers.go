@@ -72,7 +72,7 @@ func absoluteURL(c *gin.Context, path string) string {
 }
 
 // https://www.rfc-editor.org/rfc/rfc7643#section-3.1
-func setMeta(c *gin.Context, meta *Meta, resourceType, endpointBase, id string) {
+func setMeta(meta *Meta, resourceType, location string) {
 	meta.ResourceType = resourceType
-	meta.Location = absoluteURL(c, endpointBase+"/"+id)
+	meta.Location = location
 }

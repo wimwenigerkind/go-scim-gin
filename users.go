@@ -10,7 +10,7 @@ import (
 
 const (
 	userResourceType = "User"
-	userEndpointBase = "/scim/v2/Users"
+	userEndpoint     = "/Users"
 )
 
 func (h *Handler) registerUserRoutes(g *gin.RouterGroup) {
@@ -107,5 +107,5 @@ func (h *Handler) enrichUserMeta(c *gin.Context, user *User) {
 	if user.Meta == nil {
 		user.Meta = &Meta{}
 	}
-	setMeta(c, user.Meta, userResourceType, userEndpointBase, user.ID)
+	setMeta(user.Meta, userResourceType, h.resourceURL(c, userEndpoint+"/"+user.ID))
 }
