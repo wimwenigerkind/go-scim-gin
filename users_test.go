@@ -262,7 +262,7 @@ func TestListUsers(t *testing.T) {
 		w := doRequest(r, http.MethodGet, target, "", nil)
 
 		assertSCIMResponse(t, w, http.StatusOK)
-		want := &Filter{Field: "userName", Operator: FilterOperatorEqual, Value: "alice"}
+		want := &Filter{Field: "userName", Operator: FilterOperatorEqual, Value: "alice", ValueType: FilterValueString}
 		if !reflect.DeepEqual(provider.gotFilter, want) {
 			t.Errorf("filter = %+v, want %+v", provider.gotFilter, want)
 		}

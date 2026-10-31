@@ -164,7 +164,7 @@ func TestParseFilter(t *testing.T) {
 		{
 			name:   "equal",
 			filter: `userName eq "bjensen"`,
-			want:   Filter{Field: "userName", Operator: FilterOperatorEqual, Value: "bjensen"},
+			want:   Filter{Field: "userName", Operator: FilterOperatorEqual, Value: "bjensen", ValueType: FilterValueString},
 		},
 		{
 			name:   "present",
@@ -174,22 +174,22 @@ func TestParseFilter(t *testing.T) {
 		{
 			name:   "uppercase operator is normalized",
 			filter: `userName SW "b"`,
-			want:   Filter{Field: "userName", Operator: FilterOperatorStartsWith, Value: "b"},
+			want:   Filter{Field: "userName", Operator: FilterOperatorStartsWith, Value: "b", ValueType: FilterValueString},
 		},
 		{
 			name:   "number value",
 			filter: `age gt 21`,
-			want:   Filter{Field: "age", Operator: FilterOperatorGreaterThan, Value: "21"},
+			want:   Filter{Field: "age", Operator: FilterOperatorGreaterThan, Value: "21", ValueType: FilterValueNumber},
 		},
 		{
 			name:    "two tokens without pr",
 			filter:  `userName eq`,
-			wantErr: "invalid 2-token filter",
+			wantErr: `expected pr or an operator with a value after userName, got "eq"`,
 		},
 		{
 			name:    "operator in wrong position",
 			filter:  `userName "bjensen" eq`,
-			wantErr: "expected operator",
+			wantErr: `expected comparison operator after userName, got "bjensen"`,
 		},
 		{
 			name:    "compound filter",
@@ -210,6 +210,56 @@ func TestParseFilter(t *testing.T) {
 			name:    "attribute without operator",
 			filter:  "userName",
 			wantErr: "missing operator after userName",
+		},
+		{
+			name:   "boolean value keeps its type",
+			filter: `active eq true`,
+			want:   Filter{Field: "active", Operator: FilterOperatorEqual, Value: "true", ValueType: FilterValueBoolean},
+		},
+		{
+			name:   "quoted boolean is a string",
+			filter: `active eq "true"`,
+			want:   Filter{Field: "active", Operator: FilterOperatorEqual, Value: "true", ValueType: FilterValueString},
+		},
+		{
+			name:   "null value",
+			filter: `title eq null`,
+			want:   Filter{Field: "title", Operator: FilterOperatorEqual, Value: "null", ValueType: FilterValueNull},
+		},
+		{
+			name:    "bare word as value",
+			filter:  `userName eq bjensen`,
+			wantErr: `expected a string, number, true, false or null after eq, got "bjensen"`,
+		},
+		{
+			name:    "string as attribute",
+			filter:  `"x" eq "y"`,
+			wantErr: `expected attribute name, got "x"`,
+		},
+		{
+			name:    "operator as attribute",
+			filter:  `eq pr`,
+			wantErr: `expected attribute name, got "eq"`,
+		},
+		{
+			name:    "pr with a value",
+			filter:  `userName pr "x"`,
+			wantErr: `expected comparison operator after userName, got "pr"`,
+		},
+		{
+			name:    "parenthesis as value",
+			filter:  `userName eq (`,
+			wantErr: `expected a string, number, true, false or null after eq, got "("`,
+		},
+		{
+			name:    "ordering on a boolean",
+			filter:  `active gt true`,
+			wantErr: "operator gt cannot compare boolean values",
+		},
+		{
+			name:    "ordering on null",
+			filter:  `title le null`,
+			wantErr: "operator le cannot compare null values",
 		},
 		{
 			name:    "tokenizer error is returned",

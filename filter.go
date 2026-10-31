@@ -16,7 +16,28 @@ type Filter struct {
 	Operator FilterOperator
 
 	// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2
+	// Value holds the decoded literal; ValueType says which JSON type it had,
+	// so `active eq true` and `active eq "true"` can be told apart.
 	Value string
+
+	ValueType FilterValueType
+}
+
+// FilterValueType is the JSON type of a filter's comparison value.
+type FilterValueType string
+
+const (
+	FilterValueString  FilterValueType = "string"
+	FilterValueNumber  FilterValueType = "number"
+	FilterValueBoolean FilterValueType = "boolean"
+	FilterValueNull    FilterValueType = "null"
+)
+
+var filterValueTypes = map[TokenType]FilterValueType{
+	TokenTypeString: FilterValueString,
+	TokenTypeNumber: FilterValueNumber,
+	TokenTypeBool:   FilterValueBoolean,
+	TokenTypeNull:   FilterValueNull,
 }
 
 // FilterOperator https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2
@@ -107,26 +128,44 @@ func parseFilter(raw string) (Filter, error) {
 	return parse(tokens)
 }
 
+// parse accepts the two single-expression forms of the ABNF:
+// attrPath SP "pr" and attrPath SP compareOp SP compValue.
 func parse(tokens []Token) (Filter, error) {
-	switch len(tokens) {
-	case 0:
+	if len(tokens) == 0 {
 		return Filter{}, fmt.Errorf("empty filter")
+	}
+	if tokens[0].Type != TokenTypeAttrName {
+		return Filter{}, fmt.Errorf("expected attribute name, got %q", tokens[0].Value)
+	}
+	field := tokens[0].Value
+
+	switch len(tokens) {
 	case 1:
-		return Filter{}, fmt.Errorf("missing operator after %s", tokens[0].Value)
+		return Filter{}, fmt.Errorf("missing operator after %s", field)
 	case 2:
-		if tokens[1].Operator == FilterOperatorPresent {
-			return Filter{Field: tokens[0].Value, Operator: FilterOperatorPresent}, nil
+		if tokens[1].Operator != FilterOperatorPresent {
+			return Filter{}, fmt.Errorf("expected pr or an operator with a value after %s, got %q", field, tokens[1].Value)
 		}
-		return Filter{}, fmt.Errorf("invalid 2-token filter: %s %s", tokens[0].Value, tokens[1].Value)
+		return Filter{Field: field, Operator: FilterOperatorPresent}, nil
 	case 3:
-		if tokens[1].Type != TokenTypeOperator {
-			return Filter{}, fmt.Errorf("expected operator at position 2, got %s", tokens[1].Type)
+		op := tokens[1].Operator
+		if tokens[1].Type != TokenTypeOperator || op == FilterOperatorPresent {
+			return Filter{}, fmt.Errorf("expected comparison operator after %s, got %q", field, tokens[1].Value)
 		}
-		return Filter{
-			Field:    tokens[0].Value,
-			Operator: tokens[1].Operator,
-			Value:    tokens[2].Value,
-		}, nil
+		valueType, ok := filterValueTypes[tokens[2].Type]
+		if !ok {
+			return Filter{}, fmt.Errorf("expected a string, number, true, false or null after %s, got %q", op, tokens[2].Value)
+		}
+		// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2: gt, ge, lt
+		// and le on boolean values SHALL fail with invalidFilter.
+		switch op {
+		case FilterOperatorGreaterThan, FilterOperatorGreaterThanOrEqual,
+			FilterOperatorLessThan, FilterOperatorLessThanOrEqual:
+			if valueType == FilterValueBoolean || valueType == FilterValueNull {
+				return Filter{}, fmt.Errorf("operator %s cannot compare %s values", op, valueType)
+			}
+		}
+		return Filter{Field: field, Operator: op, Value: tokens[2].Value, ValueType: valueType}, nil
 	default:
 		return Filter{}, fmt.Errorf("compound filters not supported (got %d tokens)", len(tokens))
 	}
