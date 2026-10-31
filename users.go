@@ -25,7 +25,7 @@ func (h *Handler) registerUserRoutes(g *gin.RouterGroup) {
 func (h *Handler) listUsers(c *gin.Context) {
 	var filter *Filter
 	if raw := c.Query("filter"); raw != "" {
-		f, err := parseFilter(raw)
+		f, err := parseFilter(raw, SchemaCoreUser)
 		if err != nil {
 			scimJSON(c, http.StatusBadRequest,
 				scimError("400", fmt.Sprintf("invalid filter: %v", err), ScimTypeInvalidFilter))

@@ -212,6 +212,21 @@ func TestParseFilter(t *testing.T) {
 			wantErr: "missing operator after userName",
 		},
 		{
+			name:   "fully qualified core attribute",
+			filter: `urn:ietf:params:scim:schemas:core:2.0:User:userName pr`,
+			want:   Filter{Field: "userName", Operator: FilterOperatorPresent},
+		},
+		{
+			name:   "schema urn is case-insensitive",
+			filter: `URN:IETF:params:scim:schemas:core:2.0:user:userName pr`,
+			want:   Filter{Field: "userName", Operator: FilterOperatorPresent},
+		},
+		{
+			name:   "other schema is kept",
+			filter: `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber pr`,
+			want:   Filter{Field: "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber", Operator: FilterOperatorPresent},
+		},
+		{
 			name:   "boolean value keeps its type",
 			filter: `active eq true`,
 			want:   Filter{Field: "active", Operator: FilterOperatorEqual, Value: "true", ValueType: FilterValueBoolean},
@@ -270,7 +285,7 @@ func TestParseFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseFilter(tt.filter)
+			got, err := parseFilter(tt.filter, SchemaCoreUser)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("parseFilter(%q) error = %v, want error containing %q", tt.filter, err, tt.wantErr)
@@ -318,6 +333,7 @@ func TestFilterToColumn(t *testing.T) {
 		{"embedded struct", reflect.TypeFor[columnModel](), "externalId", "external_id", true},
 		{"embedded pointer struct", reflect.TypeFor[columnModelWithPointerEmbed](), "externalId", "external_id", true},
 		{"pointer to model", reflect.TypeFor[*columnModel](), "userName", "user_name", true},
+		{"attribute name is case-insensitive", reflect.TypeFor[columnModel](), "USERNAME", "user_name", true},
 		{"unknown attribute", reflect.TypeFor[columnModel](), "nickName", "", false},
 		{"untagged field is not matched", reflect.TypeFor[columnModel](), "Internal", "", false},
 		{"non-struct type", reflect.TypeFor[string](), "userName", "", false},

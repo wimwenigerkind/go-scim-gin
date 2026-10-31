@@ -10,6 +10,8 @@ import (
 // Filter https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2
 type Filter struct {
 	// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2
+	// Field keeps the client's spelling, but attribute names are case
+	// insensitive: compare it with strings.EqualFold or use FilterToColumn.
 	Field string
 
 	// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2
@@ -120,12 +122,23 @@ type Token struct {
 	Operator FilterOperator
 }
 
-func parseFilter(raw string) (Filter, error) {
+// parseFilter parses raw for a resource of the given schema. A fully
+// qualified attribute of that schema is reduced to its short name, since
+// https://www.rfc-editor.org/rfc/rfc7644#section-3.10 allows both forms.
+func parseFilter(raw string, schema Schema) (Filter, error) {
 	tokens, err := tokenize(raw)
 	if err != nil {
 		return Filter{}, err
 	}
-	return parse(tokens)
+	f, err := parse(tokens)
+	if err != nil {
+		return Filter{}, err
+	}
+	prefix := string(schema) + ":"
+	if len(f.Field) > len(prefix) && strings.EqualFold(f.Field[:len(prefix)], prefix) {
+		f.Field = f.Field[len(prefix):]
+	}
+	return f, nil
 }
 
 // parse accepts the two single-expression forms of the ABNF:
@@ -238,7 +251,7 @@ func FilterToColumn(modelType reflect.Type, scimAttr string) (string, bool) {
 			continue
 		}
 		attr, column := parseScimTag(tag)
-		if attr != scimAttr {
+		if !strings.EqualFold(attr, scimAttr) {
 			continue
 		}
 		if column != "" {
