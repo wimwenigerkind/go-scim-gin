@@ -25,6 +25,8 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+// NewHandler serves the given providers behind a static bearer token. An
+// empty token rejects every request.
 func NewHandler(providers Providers, token string, opts ...Option) *Handler {
 	h := &Handler{providers: providers, token: token}
 	for _, opt := range opts {

@@ -121,7 +121,11 @@ func TestAuth(t *testing.T) {
 		{"missing header", "", http.StatusUnauthorized},
 		{"wrong token", "Bearer wrong", http.StatusUnauthorized},
 		{"token without scheme", testToken, http.StatusUnauthorized},
+		{"other scheme", "Basic " + testToken, http.StatusUnauthorized},
+		{"token as prefix", "Bearer " + testToken + "x", http.StatusUnauthorized},
 		{"valid token", "Bearer " + testToken, http.StatusOK},
+		{"lowercase scheme", "bearer " + testToken, http.StatusOK},
+		{"extra spaces before token", "Bearer   " + testToken, http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -143,6 +147,23 @@ func TestAuth(t *testing.T) {
 				t.Errorf("WWW-Authenticate = %q", got)
 			}
 		})
+	}
+}
+
+func TestEmptyTokenLocksEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	NewHandler(Providers{Users: &fakeUserProvider{}}, "").RegisterRoutes(r)
+
+	for _, header := range []string{"", "Bearer", "Bearer "} {
+		req := httptest.NewRequest(http.MethodGet, "/scim/v2/Users", nil)
+		req.Header.Set("Authorization", header)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("Authorization %q: status = %d, want 401", header, w.Code)
+		}
 	}
 }
 
