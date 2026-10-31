@@ -1,7 +1,6 @@
 package scim
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -36,7 +35,7 @@ func (h *Handler) listUsers(c *gin.Context) {
 
 	users, err := h.providers.Users.ListUsers(c.Request.Context(), filter)
 	if err != nil {
-		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
+		providerError(c, err, userResourceType)
 		return
 	}
 
@@ -62,11 +61,7 @@ func (h *Handler) getUser(c *gin.Context) {
 
 	user, err := h.providers.Users.GetUser(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			scimJSON(c, http.StatusNotFound, scimError("404", "User not found"))
-			return
-		}
-		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
+		providerError(c, err, userResourceType)
 		return
 	}
 
@@ -91,7 +86,7 @@ func (h *Handler) createUser(c *gin.Context) {
 
 	created, err := h.providers.Users.CreateUser(c.Request.Context(), user)
 	if err != nil {
-		scimJSON(c, http.StatusInternalServerError, scimError("500", err.Error()))
+		providerError(c, err, userResourceType)
 		return
 	}
 

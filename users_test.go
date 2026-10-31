@@ -465,3 +465,34 @@ func TestSchemasAreAlwaysReturned(t *testing.T) {
 		}
 	})
 }
+
+func TestProviderErrorTextIsNotExposed(t *testing.T) {
+	const internal = "pq: duplicate key violates constraint users_pkey"
+
+	for _, tt := range []struct{ method, target, body string }{
+		{http.MethodGet, "/scim/v2/Users", ""},
+		{http.MethodGet, "/scim/v2/Users/1", ""},
+		{http.MethodPost, "/scim/v2/Users", `{"userName":"a"}`},
+	} {
+		t.Run(tt.method+" "+tt.target, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			r := gin.New()
+			var logged []string
+			r.Use(func(c *gin.Context) {
+				c.Next()
+				logged = c.Errors.Errors()
+			})
+			NewHandler(Providers{Users: &fakeUserProvider{err: errors.New(internal)}}, testToken).RegisterRoutes(r)
+
+			w := doRequest(r, tt.method, tt.target, tt.body, nil)
+
+			assertSCIMError(t, w, http.StatusInternalServerError, "")
+			if strings.Contains(w.Body.String(), internal) {
+				t.Errorf("response exposes the provider error: %s", w.Body.String())
+			}
+			if len(logged) != 1 || logged[0] != internal {
+				t.Errorf("gin context errors = %v, want [%q]", logged, internal)
+			}
+		})
+	}
+}

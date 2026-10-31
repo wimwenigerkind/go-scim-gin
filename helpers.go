@@ -1,6 +1,8 @@
 package scim
 
 import (
+	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -75,4 +77,18 @@ func absoluteURL(c *gin.Context, path string) string {
 func setMeta(meta *Meta, resourceType, location string) {
 	meta.ResourceType = resourceType
 	meta.Location = location
+}
+
+// providerError maps the sentinel errors a provider may return to SCIM error
+// responses. Anything else becomes a 500 whose text stays on the server: it
+// is attached to the gin context for the caller's logging middleware, since
+// provider errors tend to carry database details.
+func providerError(c *gin.Context, err error, resourceType string) {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		scimJSON(c, http.StatusNotFound, scimError("404", resourceType+" not found"))
+	default:
+		_ = c.Error(err)
+		scimJSON(c, http.StatusInternalServerError, scimError("500", "Internal server error"))
+	}
 }
