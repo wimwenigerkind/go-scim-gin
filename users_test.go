@@ -397,6 +397,19 @@ func TestCreateUser(t *testing.T) {
 		}
 	})
 
+	for _, body := range []string{`{}`, `{"userName":""}`, `{"userName":"  "}`} {
+		t.Run("missing userName "+body, func(t *testing.T) {
+			provider := &fakeUserProvider{}
+			r := newTestRouter(provider)
+			w := doRequest(r, http.MethodPost, "/scim/v2/Users", body, nil)
+
+			assertSCIMError(t, w, http.StatusBadRequest, ScimTypeInvalidValue)
+			if provider.gotCreate != nil {
+				t.Error("provider was called without a userName")
+			}
+		})
+	}
+
 	t.Run("invalid json", func(t *testing.T) {
 		provider := &fakeUserProvider{}
 		r := newTestRouter(provider)

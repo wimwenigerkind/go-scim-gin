@@ -3,6 +3,7 @@ package scim
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,6 +77,12 @@ func (h *Handler) createUser(c *gin.Context) {
 	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		scimJSON(c, http.StatusBadRequest, scimError("400", err.Error(), ScimTypeInvalidSyntax))
+		return
+	}
+
+	// https://www.rfc-editor.org/rfc/rfc7643#section-4.1.1
+	if strings.TrimSpace(user.UserName) == "" {
+		scimJSON(c, http.StatusBadRequest, scimError("400", "userName is required", ScimTypeInvalidValue))
 		return
 	}
 
