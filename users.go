@@ -104,6 +104,11 @@ func (h *Handler) prepareUserResponse(c *gin.Context, user *User) {
 	// https://www.rfc-editor.org/rfc/rfc7643#section-4.1.1: password has
 	// "returned" set to "never", whatever the provider hands back.
 	user.Password = ""
+	// https://www.rfc-editor.org/rfc/rfc7643#section-3: schemas MUST be a
+	// non-empty array; providers rarely store it.
+	if len(user.Schemas) == 0 {
+		user.Schemas = []Schema{SchemaCoreUser}
+	}
 	if user.CommonAttributes == nil {
 		user.CommonAttributes = &CommonAttributes{}
 	}

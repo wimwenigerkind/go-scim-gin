@@ -436,3 +436,32 @@ func TestPasswordIsNeverReturned(t *testing.T) {
 		}
 	})
 }
+
+func TestSchemasAreAlwaysReturned(t *testing.T) {
+	core := []Schema{SchemaCoreUser}
+
+	t.Run("get fills missing schemas", func(t *testing.T) {
+		r := newTestRouter(&fakeUserProvider{users: []User{{CommonAttributes: &CommonAttributes{ID: "1"}}}})
+		got := decode[User](t, doRequest(r, http.MethodGet, "/scim/v2/Users/1", "", nil))
+		if !reflect.DeepEqual(got.Schemas, core) {
+			t.Errorf("schemas = %v, want %v", got.Schemas, core)
+		}
+	})
+
+	t.Run("list fills missing schemas", func(t *testing.T) {
+		r := newTestRouter(&fakeUserProvider{users: []User{{UserName: "a"}}})
+		got := decode[ListResponse](t, doRequest(r, http.MethodGet, "/scim/v2/Users", "", nil))
+		if !reflect.DeepEqual(got.Resources[0].Schemas, core) {
+			t.Errorf("schemas = %v, want %v", got.Resources[0].Schemas, core)
+		}
+	})
+
+	t.Run("provider schemas are kept", func(t *testing.T) {
+		own := []Schema{SchemaCoreUser, "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"}
+		r := newTestRouter(&fakeUserProvider{users: []User{{CommonAttributes: &CommonAttributes{ID: "1"}, Schemas: own}}})
+		got := decode[User](t, doRequest(r, http.MethodGet, "/scim/v2/Users/1", "", nil))
+		if !reflect.DeepEqual(got.Schemas, own) {
+			t.Errorf("schemas = %v, want %v", got.Schemas, own)
+		}
+	})
+}
