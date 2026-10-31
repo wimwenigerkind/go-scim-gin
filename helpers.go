@@ -98,3 +98,8 @@ func providerError(c *gin.Context, err error, resourceType string) {
 		scimJSON(c, http.StatusInternalServerError, scimError("500", "Internal server error"))
 	}
 }
+
+// https://www.rfc-editor.org/rfc/rfc7644#section-3.12
+func notImplemented(c *gin.Context) {
+	scimJSON(c, http.StatusNotImplemented, scimError("501", c.Request.Method+" is not supported"))
+}

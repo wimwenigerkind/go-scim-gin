@@ -20,6 +20,12 @@ func (h *Handler) registerUserRoutes(g *gin.RouterGroup) {
 	g.GET("/Users", h.listUsers)
 	g.GET("/Users/:id", h.getUser)
 	g.POST("/Users", h.createUser)
+
+	// Registered so clients get a SCIM error instead of gin's plain-text 404
+	// until these operations exist.
+	g.PUT("/Users/:id", notImplemented)
+	g.PATCH("/Users/:id", notImplemented)
+	g.DELETE("/Users/:id", notImplemented)
 }
 
 func (h *Handler) listUsers(c *gin.Context) {

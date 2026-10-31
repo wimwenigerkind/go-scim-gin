@@ -603,3 +603,14 @@ func TestActiveIsOptional(t *testing.T) {
 		}
 	})
 }
+
+func TestUnsupportedOperations(t *testing.T) {
+	r := newTestRouter(&fakeUserProvider{})
+
+	for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		t.Run(method, func(t *testing.T) {
+			w := doRequest(r, method, "/scim/v2/Users/1", `{}`, nil)
+			assertSCIMError(t, w, http.StatusNotImplemented, "")
+		})
+	}
+}
