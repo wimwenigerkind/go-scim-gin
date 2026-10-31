@@ -11,7 +11,7 @@ func NewHandler(providers Providers, token string) *Handler {
 	return &Handler{providers: providers, token: token}
 }
 
-func (h *Handler) RegisterRoutes(r *gin.Engine) {
+func (h *Handler) RegisterRoutes(r gin.IRouter) {
 	g := r.Group("/scim/v2", h.authMiddleware())
 	h.registerUserRoutes(g)
 }

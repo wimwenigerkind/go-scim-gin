@@ -146,6 +146,15 @@ func TestAuth(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutesOnGroup(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	NewHandler(Providers{Users: &fakeUserProvider{}}, testToken).RegisterRoutes(r.Group("/api"))
+
+	w := doRequest(r, http.MethodGet, "/api/scim/v2/Users", "", nil)
+	assertSCIMResponse(t, w, http.StatusOK)
+}
+
 func TestUserRoutesWithoutProvider(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
