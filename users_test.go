@@ -223,7 +223,7 @@ func TestListUsers(t *testing.T) {
 		}
 	})
 
-	for _, raw := range []string{`userName eq`, `userName eq "bjen`, `userName eq "a" & title pr`} {
+	for _, raw := range []string{" ", `userName`, `userName eq`, `userName eq "bjen`, `userName eq "a" & title pr`} {
 		t.Run("invalid filter "+raw, func(t *testing.T) {
 			provider := &fakeUserProvider{}
 			r := newTestRouter(provider)

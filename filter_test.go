@@ -166,7 +166,17 @@ func TestParseFilter(t *testing.T) {
 		{
 			name:    "empty filter",
 			filter:  "",
-			wantErr: "compound filters not supported",
+			wantErr: "empty filter",
+		},
+		{
+			name:    "whitespace-only filter",
+			filter:  "   ",
+			wantErr: "empty filter",
+		},
+		{
+			name:    "attribute without operator",
+			filter:  "userName",
+			wantErr: "missing operator after userName",
 		},
 		{
 			name:    "tokenizer error is returned",

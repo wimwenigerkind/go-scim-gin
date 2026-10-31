@@ -108,6 +108,10 @@ func parseFilter(raw string) (Filter, error) {
 
 func parse(tokens []Token) (Filter, error) {
 	switch len(tokens) {
+	case 0:
+		return Filter{}, fmt.Errorf("empty filter")
+	case 1:
+		return Filter{}, fmt.Errorf("missing operator after %s", tokens[0].Value)
 	case 2:
 		if tokens[1].Operator == FilterOperatorPresent {
 			return Filter{Field: tokens[0].Value, Operator: FilterOperatorPresent}, nil
