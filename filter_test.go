@@ -85,7 +85,10 @@ func TestTokenize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tokenize(tt.filter)
+			got, err := tokenize(tt.filter)
+			if err != nil {
+				t.Fatalf("tokenize(%q) unexpected error: %v", tt.filter, err)
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("tokenize(%q)\n got  %+v\n want %+v", tt.filter, got, tt.want)
 			}
@@ -93,7 +96,32 @@ func TestTokenize(t *testing.T) {
 	}
 }
 
-func TestParse(t *testing.T) {
+func TestTokenizeErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		filter  string
+		wantErr string
+	}{
+		{"unterminated string", `userName eq "bjen`, "unterminated string starting at position 12"},
+		{"lone quote", `"`, "unterminated string starting at position 0"},
+		{"unexpected character", `userName eq "a" & title pr`, `unexpected character '&' at position 16`},
+		{"tab is not whitespace", "userName\teq \"a\"", `unexpected character '\t' at position 8`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tokenize(tt.filter)
+			if err == nil || err.Error() != tt.wantErr {
+				t.Fatalf("tokenize(%q) = (%+v, %v), want error %q", tt.filter, got, err, tt.wantErr)
+			}
+			if got != nil {
+				t.Errorf("tokenize(%q) returned tokens %+v alongside the error", tt.filter, got)
+			}
+		})
+	}
+}
+
+func TestParseFilter(t *testing.T) {
 	tests := []struct {
 		name    string
 		filter  string
@@ -140,22 +168,27 @@ func TestParse(t *testing.T) {
 			filter:  "",
 			wantErr: "compound filters not supported",
 		},
+		{
+			name:    "tokenizer error is returned",
+			filter:  `userName eq "bjen`,
+			wantErr: "unterminated string",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parse(tokenize(tt.filter))
+			got, err := parseFilter(tt.filter)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("parse(%q) error = %v, want error containing %q", tt.filter, err, tt.wantErr)
+					t.Fatalf("parseFilter(%q) error = %v, want error containing %q", tt.filter, err, tt.wantErr)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("parse(%q) unexpected error: %v", tt.filter, err)
+				t.Fatalf("parseFilter(%q) unexpected error: %v", tt.filter, err)
 			}
 			if got != tt.want {
-				t.Errorf("parse(%q) = %+v, want %+v", tt.filter, got, tt.want)
+				t.Errorf("parseFilter(%q) = %+v, want %+v", tt.filter, got, tt.want)
 			}
 		})
 	}

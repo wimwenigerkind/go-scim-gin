@@ -98,6 +98,14 @@ type Token struct {
 	Operator FilterOperator
 }
 
+func parseFilter(raw string) (Filter, error) {
+	tokens, err := tokenize(raw)
+	if err != nil {
+		return Filter{}, err
+	}
+	return parse(tokens)
+}
+
 func parse(tokens []Token) (Filter, error) {
 	switch len(tokens) {
 	case 2:
@@ -229,7 +237,7 @@ func toSnakeCase(s string) string {
 	return b.String()
 }
 
-func tokenize(filter string) []Token {
+func tokenize(filter string) ([]Token, error) {
 	var tokens []Token
 
 	for i := 0; i < len(filter); i++ {
@@ -260,6 +268,9 @@ func tokenize(filter string) []Token {
 			for i < len(filter) && filter[i] != '"' {
 				i++
 			}
+			if i == len(filter) {
+				return nil, fmt.Errorf("unterminated string starting at position %d", start-1)
+			}
 			tokens = append(tokens, Token{Type: TokenTypeString, Value: filter[start:i]})
 			continue
 		}
@@ -283,7 +294,9 @@ func tokenize(filter string) []Token {
 			i--
 			continue
 		}
+
+		return nil, fmt.Errorf("unexpected character %q at position %d", c, i)
 	}
 
-	return tokens
+	return tokens, nil
 }

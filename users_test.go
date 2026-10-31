@@ -223,17 +223,19 @@ func TestListUsers(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid filter", func(t *testing.T) {
-		provider := &fakeUserProvider{}
-		r := newTestRouter(provider)
-		target := "/scim/v2/Users?filter=" + url.QueryEscape(`userName eq`)
-		w := doRequest(r, http.MethodGet, target, "", nil)
+	for _, raw := range []string{`userName eq`, `userName eq "bjen`, `userName eq "a" & title pr`} {
+		t.Run("invalid filter "+raw, func(t *testing.T) {
+			provider := &fakeUserProvider{}
+			r := newTestRouter(provider)
+			target := "/scim/v2/Users?filter=" + url.QueryEscape(raw)
+			w := doRequest(r, http.MethodGet, target, "", nil)
 
-		assertSCIMError(t, w, http.StatusBadRequest, ScimTypeInvalidFilter)
-		if provider.listCalled {
-			t.Error("provider was called despite invalid filter")
-		}
-	})
+			assertSCIMError(t, w, http.StatusBadRequest, ScimTypeInvalidFilter)
+			if provider.listCalled {
+				t.Error("provider was called despite invalid filter")
+			}
+		})
+	}
 
 	t.Run("provider error", func(t *testing.T) {
 		r := newTestRouter(&fakeUserProvider{err: errors.New("boom")})
