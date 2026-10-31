@@ -119,68 +119,6 @@ func parse(tokens []Token) (Filter, error) {
 	}
 }
 
-func getAttribute(resource any, field string) string {
-	v := reflect.ValueOf(resource)
-	t := reflect.TypeOf(resource)
-
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return ""
-		}
-		v = v.Elem()
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return ""
-	}
-
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-
-		if f.Anonymous {
-			fv := v.Field(i)
-			if fv.Kind() == reflect.Ptr && fv.IsNil() {
-				continue
-			}
-			if val := getAttribute(fv.Interface(), field); val != "" {
-				return val
-			}
-			continue
-		}
-
-		tag := f.Tag.Get("scim")
-		if tag == "" {
-			continue
-		}
-		attr, _ := parseScimTag(tag)
-		if attr == field {
-			return fmt.Sprintf("%v", v.Field(i).Interface())
-		}
-	}
-	return ""
-}
-
-func evaluate(filter Filter, resource any) bool {
-	val := getAttribute(resource, filter.Field)
-
-	switch filter.Operator {
-	case FilterOperatorEqual:
-		return val == filter.Value
-	case FilterOperatorNotEqual:
-		return val != filter.Value
-	case FilterOperatorContains:
-		return strings.Contains(val, filter.Value)
-	case FilterOperatorStartsWith:
-		return strings.HasPrefix(val, filter.Value)
-	case FilterOperatorEndsWith:
-		return strings.HasSuffix(val, filter.Value)
-	case FilterOperatorPresent:
-		return val != ""
-	}
-
-	return false
-}
-
 func isWordChar(c byte) bool {
 	return (c >= 'a' && c <= 'z') ||
 		(c >= 'A' && c <= 'Z') ||
