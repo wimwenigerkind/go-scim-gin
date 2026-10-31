@@ -390,6 +390,13 @@ func TestCreateUser(t *testing.T) {
 		}
 	})
 
+	t.Run("conflict", func(t *testing.T) {
+		r := newTestRouter(&fakeUserProvider{err: fmt.Errorf("insert: %w", ErrConflict)})
+		w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"alice"}`, nil)
+
+		assertSCIMError(t, w, http.StatusConflict, ScimTypeUniqueness)
+	})
+
 	t.Run("provider error", func(t *testing.T) {
 		r := newTestRouter(&fakeUserProvider{err: errors.New("boom")})
 		w := doRequest(r, http.MethodPost, "/scim/v2/Users", `{"userName":"alice"}`, nil)

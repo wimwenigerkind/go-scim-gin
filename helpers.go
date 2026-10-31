@@ -87,6 +87,8 @@ func providerError(c *gin.Context, err error, resourceType string) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		scimJSON(c, http.StatusNotFound, scimError("404", resourceType+" not found"))
+	case errors.Is(err, ErrConflict):
+		scimJSON(c, http.StatusConflict, scimError("409", resourceType+" already exists", ScimTypeUniqueness))
 	default:
 		_ = c.Error(err)
 		scimJSON(c, http.StatusInternalServerError, scimError("500", "Internal server error"))
