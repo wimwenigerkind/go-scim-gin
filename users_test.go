@@ -271,6 +271,24 @@ func TestListUsers(t *testing.T) {
 		})
 	}
 
+	t.Run("too many results", func(t *testing.T) {
+		r := newTestRouter(&fakeUserProvider{err: ErrTooMany})
+		w := doRequest(r, http.MethodGet, "/scim/v2/Users", "", nil)
+
+		assertSCIMError(t, w, http.StatusBadRequest, ScimTypeTooMany)
+	})
+
+	t.Run("unsupported filter", func(t *testing.T) {
+		r := newTestRouter(&fakeUserProvider{err: fmt.Errorf("nickName: %w", ErrUnsupportedFilter)})
+		target := "/scim/v2/Users?filter=" + url.QueryEscape(`nickName pr`)
+		w := doRequest(r, http.MethodGet, target, "", nil)
+
+		assertSCIMError(t, w, http.StatusBadRequest, ScimTypeInvalidFilter)
+		if body := decode[map[string]any](t, w); body["detail"] != "nickName: scim: unsupported filter" {
+			t.Errorf("detail = %v", body["detail"])
+		}
+	})
+
 	t.Run("provider error", func(t *testing.T) {
 		r := newTestRouter(&fakeUserProvider{err: errors.New("boom")})
 		w := doRequest(r, http.MethodGet, "/scim/v2/Users", "", nil)
