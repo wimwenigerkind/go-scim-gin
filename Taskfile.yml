@@ -1,0 +1,34 @@
+version: '3'
+
+# Included taskfiles may not declare dotenv, so the whole repository reads the
+# one at the root.
+dotenv: ['.env']
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  build:
+    desc: Build all packages
+    cmds:
+      - go build ./...
+
+  vet:
+    desc: Run go vet on all packages
+    cmds:
+      - go vet ./...
+
+  test:
+    desc: Run the tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  check:
+    desc: Build, vet and test, as CI does
+    cmds:
+      - task: build
+      - task: vet
+      - task: test
