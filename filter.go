@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -266,30 +267,44 @@ func tokenize(filter string) ([]Token, error) {
 			continue
 		}
 
+		// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2: string and
+		// number values follow the JSON grammar, so encoding/json decodes and
+		// validates them once their end is found.
 		if c == '"' {
-			i++
 			start := i
-			for i < len(filter) && filter[i] != '"' {
-				i++
+			for i++; i < len(filter) && filter[i] != '"'; i++ {
+				if filter[i] == '\\' {
+					i++
+				}
 			}
-			if i == len(filter) {
-				return nil, fmt.Errorf("unterminated string starting at position %d", start-1)
+			if i >= len(filter) {
+				return nil, fmt.Errorf("unterminated string starting at position %d", start)
 			}
-			tokens = append(tokens, Token{Type: TokenTypeString, Value: filter[start:i]})
+			var value string
+			if err := json.Unmarshal([]byte(filter[start:i+1]), &value); err != nil {
+				return nil, fmt.Errorf("invalid string at position %d: %w", start, err)
+			}
+			tokens = append(tokens, Token{Type: TokenTypeString, Value: value})
 			continue
 		}
 
-		if c >= '0' && c <= '9' {
+		if c == '-' || (c >= '0' && c <= '9') {
 			start := i
-			for i < len(filter) && (filter[i] >= '0' && filter[i] <= '9' || filter[i] == '.') {
+			for i < len(filter) && strings.IndexByte("0123456789.eE+-", filter[i]) >= 0 {
 				i++
 			}
-			tokens = append(tokens, Token{Type: TokenTypeNumber, Value: filter[start:i]})
+			number := filter[start:i]
+			if !json.Valid([]byte(number)) {
+				return nil, fmt.Errorf("invalid number %q at position %d", number, start)
+			}
+			tokens = append(tokens, Token{Type: TokenTypeNumber, Value: number})
 			i--
 			continue
 		}
 
-		if isWordChar(c) {
+		// https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.2:
+		// ATTRNAME = ALPHA *(nameChar)
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
 			start := i
 			for i < len(filter) && isWordChar(filter[i]) {
 				i++

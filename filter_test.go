@@ -77,6 +77,33 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
+			name:   "escaped quote and backslash",
+			filter: `x eq "a\"b\\"`,
+			want: []Token{
+				{Type: TokenTypeAttrName, Value: "x"},
+				{Type: TokenTypeOperator, Value: "eq", Operator: FilterOperatorEqual},
+				{Type: TokenTypeString, Value: `a"b\`},
+			},
+		},
+		{
+			name:   "unicode escape",
+			filter: `x eq "caf\u00e9"`,
+			want: []Token{
+				{Type: TokenTypeAttrName, Value: "x"},
+				{Type: TokenTypeOperator, Value: "eq", Operator: FilterOperatorEqual},
+				{Type: TokenTypeString, Value: "café"},
+			},
+		},
+		{
+			name:   "negative number with exponent",
+			filter: `x gt -1.5e3`,
+			want: []Token{
+				{Type: TokenTypeAttrName, Value: "x"},
+				{Type: TokenTypeOperator, Value: "gt", Operator: FilterOperatorGreaterThan},
+				{Type: TokenTypeNumber, Value: "-1.5e3"},
+			},
+		},
+		{
 			name:   "empty filter",
 			filter: "",
 			want:   nil,
@@ -106,13 +133,19 @@ func TestTokenizeErrors(t *testing.T) {
 		{"lone quote", `"`, "unterminated string starting at position 0"},
 		{"unexpected character", `userName eq "a" & title pr`, `unexpected character '&' at position 16`},
 		{"tab is not whitespace", "userName\teq \"a\"", `unexpected character '\t' at position 8`},
+		{"invalid escape", `x eq "\x"`, `invalid string at position 5: `},
+		{"leading zero", `x eq 01`, `invalid number "01" at position 5`},
+		{"two decimal points", `x eq 1.2.3`, `invalid number "1.2.3" at position 5`},
+		{"attribute starting with underscore", `_x pr`, `unexpected character '_' at position 0`},
+		{"attribute starting with dot", `.x pr`, `unexpected character '.' at position 0`},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tokenize(tt.filter)
-			if err == nil || err.Error() != tt.wantErr {
-				t.Fatalf("tokenize(%q) = (%+v, %v), want error %q", tt.filter, got, err, tt.wantErr)
+			// Prefix match, so the encoding/json message behind ": " can change.
+			if err == nil || !strings.HasPrefix(err.Error(), tt.wantErr) {
+				t.Fatalf("tokenize(%q) = (%+v, %v), want error starting with %q", tt.filter, got, err, tt.wantErr)
 			}
 			if got != nil {
 				t.Errorf("tokenize(%q) returned tokens %+v alongside the error", tt.filter, got)
